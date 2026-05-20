@@ -38,4 +38,4 @@
   become: yes
 
   roles:
-    - ami_caputure
+    - ami_capture

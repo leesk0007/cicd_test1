@@ -1,6 +1,6 @@
 variable "domain_name" {
     type = string
-    default = "vche.cloud"
+    default = "tuby.shop"
 }
 
 variable "alb_arn" {
