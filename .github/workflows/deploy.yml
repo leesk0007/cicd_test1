@@ -28,17 +28,17 @@ jobs:
           chmod 600 ~/.ssh/bastion-key.pem
           echo "${{ secrets.ANSIBLE_PRIVATE_KEY }}" > ~/.ssh/ansible-key.pem
           chmod 600 ~/.ssh/ansible-key.pem
-          
+
       - name: Bastion SSH 연결 테스트 (디버깅용)
-            run: |
-              BASTION_IP=$(grep -A2 'bastion01:' ansible/inventories/dev/inventory.yml | grep 'ansible_host' | awk '{print $2}' | tr -d '"')
-              echo "Bastion IP: $BASTION_IP"
-              head -1 ~/.ssh/bastion-key.pem
-              ssh -i ~/.ssh/bastion-key.pem \
-                -o StrictHostKeyChecking=no \
-                -o ConnectTimeout=10 \
-                -v \
-                adreamin@$BASTION_IP "echo 'Bastion OK'"
+        run: |
+          BASTION_IP=$(grep -A2 'bastion01:' ansible/inventories/dev/inventory.yml | grep 'ansible_host' | awk '{print $2}' | tr -d '"')
+          echo "Bastion IP: $BASTION_IP"
+          head -1 ~/.ssh/bastion-key.pem
+          ssh -i ~/.ssh/bastion-key.pem \
+            -o StrictHostKeyChecking=no \
+            -o ConnectTimeout=10 \
+            -v \
+            adreamin@$BASTION_IP "echo 'Bastion OK'"
             
       - name: Python & Ansible 설치
         run: pip install ansible boto3 botocore
