@@ -1,0 +1,63 @@
+name: "Deploy & Bake AMI"
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - "web/**"
+      - "ansible/roles/nginx/**"
+      - "ansible/roles/fastapi/**"
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      AWS_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
+      AWS_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+      AWS_DEFAULT_REGION: ap-northeast-2
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: SSH 키 설정
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.BASTION_PRIVATE_KEY }}" > ~/.ssh/bastion-key.pem
+          chmod 600 ~/.ssh/bastion-key.pem
+          echo "${{ secrets.ANSIBLE_PRIVATE_KEY }}" > ~/.ssh/ansible-key.pem
+          chmod 600 ~/.ssh/ansible-key.pem
+
+      - name: Python & Ansible 설치
+        run: pip install ansible boto3 botocore
+
+      - name: Ansible Galaxy 컬렉션 설치
+        working-directory: ./ansible
+        run: ansible-galaxy collection install amazon.aws
+
+      - name: WAS 최신 코드 배포
+        working-directory: ./ansible
+        run: |
+          ansible-playbook \
+            -i inventories/dev/inventory.yml \
+            playbooks/deploy_fastapi.yml \
+            -e "ansible_python_interpreter=/usr/bin/python3"
+
+      - name: WAS AMI 캡처
+        working-directory: ./ansible
+        run: |
+          ansible-playbook \
+            -i inventories/dev/inventory.yml \
+            playbooks/ami_capture.yml \
+            -e "ansible_python_interpreter=/usr/bin/python3"
+
+      - name: Terraform 설치
+        uses: hashicorp/setup-terraform@v3
+
+      - name: Terraform init
+        working-directory: ./terraform/envs/dev
+        run: terraform init
+
+      - name: ASG 업데이트 (새 AMI 반영)
+        working-directory: ./terraform/envs/dev
+        run: terraform apply --auto-approve -target=module.asg
